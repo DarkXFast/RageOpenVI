@@ -93,17 +93,16 @@ static uint64_t GetAttribsHook(void* device, const char* path)
 
 static memory::InitFuncs FileReadHooks([] {
 
-    memory::scan("40 53 48 81 ec ? ? ? ? 49 8b d8 48 8d 4c 24 ? 4c 8b c2 ba ? ? ? ? e8 ? ? ? ? 48 83 64 24")
-        .hook(OpenBulkHook, &g_origOpenBulk);
+    if (auto fn = patterns::find(patterns::OpenBulk))
+        memory(fn).hook(OpenBulkHook, &g_origOpenBulk);
 
-    // had to hardcode the last byte (offset) to be different from GetFileSize
-    memory::scan("48 81 ec ? ? ? ? 4c 8b c2 48 8d 4c 24 ? ba ? ? ? ? e8 ? ? ? ? 48 8b c8 4c 8d 44 24 ? 33 d2 ff 15 ? ? ? ? 85 c0 75 ? 33 c0 eb ? 8b 44 24 38")
-        .hook(GetFileTimeHook, &g_origGetFileTime);
+    // GetFileTime and GetFileSize differ only in the last byte of their patterns (stat field offset)
+    if (auto fn = patterns::find(patterns::GetFileTime))
+        memory(fn).hook(GetFileTimeHook, &g_origGetFileTime);
 
-    // had to hardcode the last byte (offset) to be different from GetFileTime
-    memory::scan("48 81 ec ? ? ? ? 4c 8b c2 48 8d 4c 24 ? ba ? ? ? ? e8 ? ? ? ? 48 8b c8 4c 8d 44 24 ? 33 d2 ff 15 ? ? ? ? 85 c0 75 ? 33 c0 eb ? 8b 44 24 3c")
-        .hook(GetFileSizeHook, &g_origGetFileSize);
+    if (auto fn = patterns::find(patterns::GetFileSize))
+        memory(fn).hook(GetFileSizeHook, &g_origGetFileSize);
 
-    memory::scan("48 89 5c 24 ? 57 48 81 ec ? ? ? ? 4c 8b c2 48 8d 4c 24 ? ba ? ? ? ? e8 ? ? ? ? 48 8b c8")
-        .hook(GetAttribsHook, &g_origGetAttribs);
+    if (auto fn = patterns::find(patterns::GetAttributes))
+        memory(fn).hook(GetAttribsHook, &g_origGetAttribs);
 });

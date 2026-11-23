@@ -6,9 +6,9 @@
 	How to do it:
 	Find something from the list, eg. common:/data/dlclist.xml
 
-	Copy the original dlclist.xml from the files and place it in [your GTA5 folder]/newmods/common/data/dlclist.xml
+	Copy the original dlclist.xml from the files and place it in [your game folder]/newmods/common/data/dlclist.xml
 	Edit the file, add a new entry like <Item>dlcpacks:/mrpd/</Item>
-	Place the single player dlc.rpf like [your GTA5 folder]/newmods/dlcpacks/mrpd/dlc.rpf
+	Place the single player dlc.rpf like [your game folder]/newmods/dlcpacks/mrpd/dlc.rpf
 
 	Start the game and the modded stuff should be loaded automatically.
 
@@ -66,12 +66,13 @@ void InitialMountHook()
 	dlcDevice->Mount("dlcpacks:/");
 }
 
-static memory::func<rage::fiDevice*, const char*, bool, bool> GetDeviceHook("48 89 5c 24 ? 48 89 6c 24 ? 48 89 74 24 ? 57 48 83 ec ? 41 8a f0 40 8a ea 41 b8");
+using GetDeviceFn = rage::fiDevice* (__fastcall*)(const char*, bool, bool);
+static GetDeviceFn GetDevice = nullptr;
 
 char (*OpenArchiveOrig)(rage::fiPackfile* a1, const char* path, char smth, int32_t type, __int64 a5, __int64 a6, bool a7);
 char OpenArchiveHook(rage::fiPackfile* a1, const char* path, char smth, int32_t type, __int64 a5, __int64 a6, bool a7)
 {
-	auto device = GetDeviceHook(path, true, true);
+	auto device = GetDevice ? GetDevice(path, true, true) : nullptr;
 	if (device && IsCustomDevice((rage::fiDeviceLocal*)device))
 	{
 		if (device->GetAttributes(path) & FILE_ATTRIBUTE_DIRECTORY)
@@ -88,10 +89,18 @@ char OpenArchiveHook(rage::fiPackfile* a1, const char* path, char smth, int32_t 
 
 static memory::InitFuncs CustomDevice([] {
 
-		auto mem = memory::scan("0f b7 05 ? ? ? ? 48 03 c3 44 88 34 38 66 01 1d").add(21);
-		InitialMountOrig = mem.add(1).rip().as<decltype(InitialMountOrig)>();
-		mem.set_call(InitialMountHook);
+		// The mods devices need Mount/SetPath (rage/fiDevice.cpp); without them, mounting would call address 0.
+		bool canMount = patterns::find(patterns::DeviceMount) && patterns::find(patterns::DeviceSetPath);
 
-		memory::scan("48 89 5c 24 ? 48 89 54 24 ? 55 56 57 41 54 41 55 41 56 41 57 48 8d 6c 24 ? 48 81 ec ? ? ? ? 4c 8b bd")
-			.hook(OpenArchiveHook, &OpenArchiveOrig);
+		if (auto call = patterns::find(patterns::InitialMountCall); call && canMount)
+		{
+			memory mem(call);
+			InitialMountOrig = mem.add(1).rip().as<decltype(InitialMountOrig)>();
+			mem.set_call(InitialMountHook);
+		}
+
+		GetDevice = reinterpret_cast<GetDeviceFn>(patterns::find(patterns::GetDevice));
+
+		if (auto fn = patterns::find(patterns::OpenArchive))
+			memory(fn).hook(OpenArchiveHook, &OpenArchiveOrig);
 });

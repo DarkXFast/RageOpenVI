@@ -1,3 +1,7 @@
 BUILD
 src/.vs
-.vs/
+out/
+
+# Research notes stay in the private tools repo, never in this public repo
+NOTES.md
+*.notes.md

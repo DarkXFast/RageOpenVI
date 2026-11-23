@@ -9,7 +9,10 @@ bool ParseHeaderHook(rage::fiPackfile* a1, const char* name, bool readHeader, vo
 }
 
 static memory::InitFuncs PackfileEncryptionHooks([] {
-	auto mem = memory::scan("48 8b ce 88 44 24 ? 4c 89 7c 24 ? e8").add(12);
-	ParseHeaderOrig = mem.add(1).rip().as<decltype(ParseHeaderOrig)>();
-	mem.set_call(ParseHeaderHook);
+	if (auto call = patterns::find(patterns::ParseHeaderCall))
+	{
+		memory mem(call);
+		ParseHeaderOrig = mem.add(1).rip().as<decltype(ParseHeaderOrig)>();
+		mem.set_call(ParseHeaderHook);
+	}
 });

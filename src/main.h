@@ -12,5 +12,6 @@
 #include "utils/memory.h"
 #include "utils/config.h"
 
-#include "rdr2/rage/fiDevice.h"
-#include "rdr2/rage/fiPackfile.h"
+#include "rage/fiDevice.h"
+#include "rage/fiPackfile.h"
+#include "game/patterns.h"

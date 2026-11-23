@@ -9,22 +9,25 @@ void HookGetSystemTimeAsFileTime(LPFILETIME lpSystemTimeAsFileTime)
 		bInited = true;
 
 		// Don't hide the console
-		auto addr = memory::scan("ff 15 ? ? ? ? 33 c9 ff 15 ? ? ? ? 45 33 c9");
-		if (addr.address != 0) {
-			addr.nop(6);
-		}
+		if (auto addr = patterns::find(patterns::ShowConsole))
+			memory(addr).nop(6);
 
 		// cache skip
-		addr = memory::scan("74 ? e8 ? ? ? ? 48 8b c8 48 8d 15 ? ? ? ? e8 ? ? ? ? 66 83 7b");
-		if (addr.address != 0) {
-			addr.put<uint8_t>(0xEB);
-		}
+		if (auto addr = patterns::find(patterns::CacheSkip))
+			memory(addr).put<uint8_t>(0xEB);
 
 		memory::InitFuncs::run();
 
-		logger::write("info", " RageOpenRDR2 Inited!");
+		logger::write("info", " RageOpenVI inited");
 	}
 	origGetSystemTimeAsFileTime(lpSystemTimeAsFileTime);
+}
+
+static void LogHostProcess()
+{
+	char path[MAX_PATH]{ 0 };
+	GetModuleFileNameA(nullptr, path, MAX_PATH);
+	logger::write("info", " Loaded into %s", path);
 }
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD  dwReason, LPVOID lpReserved)
@@ -37,6 +40,9 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD  dwReason, LPVOID lpReserved)
 
 		logger::init();
 
+		if (!config::get_config_or<bool>("enabled", true))
+			return TRUE;
+
 		memory::init();
 
 		if (config::get_config<bool>("console"))
@@ -48,6 +54,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD  dwReason, LPVOID lpReserved)
 			freopen_s(&unused, "CONOUT$", "w", stdout);
 			freopen_s(&unused, "CONOUT$", "w", stderr);
 		}
+
+		LogHostProcess();
 
 		if (!memory::HookApi(L"kernel32.dll", "GetSystemTimeAsFileTime", (PVOID)HookGetSystemTimeAsFileTime, (PVOID*)&origGetSystemTimeAsFileTime)) {
 			logger::write("info", "Hooking failed error (%ld)", GetLastError());

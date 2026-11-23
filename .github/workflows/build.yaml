@@ -38,12 +38,12 @@ jobs:
           tag_name: ${{ github.ref }}
           release_name: Release ${{ github.ref }}
 
-      - name: Upload RageOpenRDR2.asi
+      - name: Upload RageOpenVI.asi
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: BUILD/BIN/Release/RageOpenRDR2.asi
-          asset_name: RageOpenRDR2.asi
+          asset_path: BUILD/BIN/Release/RageOpenVI.asi
+          asset_name: RageOpenVI.asi
           asset_content_type: application/octet-stream

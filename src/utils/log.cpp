@@ -5,9 +5,9 @@
 
 void logger::init()
 {
-	if(std::filesystem::exists("RageOpenRDR2.log"))
+	if(std::filesystem::exists("RageOpenVI.log"))
 	{
-		std::filesystem::remove("RageOpenRDR2.log");
+		std::filesystem::remove("RageOpenVI.log");
 	}
 }
 
@@ -34,7 +34,7 @@ void logger::vwrite(const char* type, const char* msg, va_list args)
 
     if (config::get_log(type))
     {
-        std::ofstream logFile("RageOpenRDR2.log", std::ofstream::out | std::ofstream::app);
+        std::ofstream logFile("RageOpenVI.log", std::ofstream::out | std::ofstream::app);
         logFile << buffer << '\n';
     }
 }

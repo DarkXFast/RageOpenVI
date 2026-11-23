@@ -3,22 +3,21 @@
 bool rage::fiDevice::Mount(const char* mountPoint)
 {
 	logger::write("device", "[%s] %s", __FUNCTION__, mountPoint);
-	static auto func = memory::scan("48 89 5c 24 ? 57 48 81 ec ? ? ? ? 44 8a 81 ? ? ? ? 48 8b da 48 8b d1 48 8b f9 48 8b cb")
-		.as<bool(*)(void*, const char*)>();
-	return func(this, mountPoint);
+	static auto func = reinterpret_cast<bool(*)(void*, const char*)>(patterns::find(patterns::DeviceMount));
+	return func ? func(this, mountPoint) : false;
 }
 
 void rage::fiDevice::SetPath(const char* path, bool allowRoot, rage::fiDevice* parent)
 {
 	logger::write("device", "[%s] %s", __FUNCTION__, path);
-	static auto func = memory::scan("48 89 5c 24 ? 48 89 6c 24 ? 48 89 74 24 ? 57 48 81 ec ? ? ? ? 49 8b f1 41 8a e8 48 8b da 48 8b f9 e8")
-		.as<void(*)(void*, const char*, bool, rage::fiDevice*)>();
-	func(this, path, allowRoot, parent);
+	static auto func = reinterpret_cast<void(*)(void*, const char*, bool, rage::fiDevice*)>(patterns::find(patterns::DeviceSetPath));
+	if (func)
+		func(this, path, allowRoot, parent);
 }
 
 rage::fiDeviceRelative::fiDeviceRelative()
 {
-	static auto relativeDeviceVMT = memory::scan("48 8d 05 ? ? ? ? 48 89 5e ? 48 89 06 eb ? 48 8b f3").add(3).rip().as<void*>();
+	static auto relativeDeviceVMT = reinterpret_cast<void*>(patterns::find(patterns::RelativeDeviceVmt));
 	VMT = relativeDeviceVMT;
 	pad[0x158] = 0;
 }
