@@ -63,6 +63,47 @@ namespace patterns
 	inline constexpr Pattern RelativeDeviceVmt = { "fiDeviceRelative vtable",
 		"48 8d 05 ? ? ? ? 48 89 5e ? 48 89 06 eb ? 48 8b f3", 3, Kind::RipOperand };
 
+	// GTA VI candidates, found in the Xbox Series executable (not wired up yet).
+	//
+	// These are the same engine functions in the GTA VI Xbox build. They're kept here so the PC port starts from
+	// GTA VI's code, not RDR2's. Several signatures changed shape (GetDevice takes 2 args, OpenArchive 3), so the
+	// hooks above can't simply switch to them: each needs its hook updated first. Check every one against the PC exe.
+	namespace gta6_xbox
+	{
+		// (path, bool) -> fiDevice*. Xbox RVA 0x968490.
+		inline constexpr Pattern GetDevice = { "GTA VI GetDevice",
+			"56 57 53 48 83 ec 30 89 d3 48 89 ce e8 ? ? ? ? 8a 0e", 0, Kind::Function };
+		// (ArchiveSource** out, const char* path, const void* rpf9Header) -> out. Xbox RVA 0xfc21c0.
+		inline constexpr Pattern OpenArchive = { "GTA VI OpenArchive",
+			"41 56 56 57 53 48 83 ec 28 4c 89 c3 49 89 d6 48 89 ce 4d 85 c0", 0, Kind::Function };
+		// RPF9 header reader. Xbox RVA 0x1fb2600.
+		inline constexpr Pattern ReadRpf9Header = { "GTA VI RPF9 header reader",
+			"41 57 41 56 41 54 56 57 55 53 48 83 ec 70 4d 85 c9", 0, Kind::Function };
+		// fiDeviceLocal vtable 0x62fdae0: OpenBulk slot 5, GetFileSize 31, GetFileTime 33, GetAttributes 45.
+		inline constexpr Pattern OpenBulk = { "GTA VI fiDeviceLocal::OpenBulk",
+			"56 57 48 81 ec ? ? ? ? 48 8d 7c 24 40 4c 89 c6", 0, Kind::Function };
+		inline constexpr Pattern GetFileSize = { "GTA VI fiDeviceLocal::GetFileSize",
+			"56 57 53 48 81 ec ? ? ? ? 48 8d 74 24 50 48 89 f1", 0, Kind::Function };
+		inline constexpr Pattern GetFileTime = { "GTA VI fiDeviceLocal::GetFileTime",
+			"56 57 48 81 ec ? ? ? ? 48 8d 7c 24 50", 0, Kind::Function };
+		inline constexpr Pattern GetAttributes = { "GTA VI fiDeviceLocal::GetAttributes",
+			"56 48 81 ec ? ? ? ? 48 8d 74 24 20 48 89 f1 e8 ? ? ? ? 48 89 f1 ff 15 ? ? ? ? 90", 0, Kind::Function };
+		// (device, mountName). Xbox RVA 0x1fb2210.
+		inline constexpr Pattern DeviceMount = { "GTA VI fiDevice::Mount",
+			"56 57 53 48 83 ec 20 44 8a 81", 0, Kind::Function };
+		// (device, path, allowRoot, parent). Xbox RVA 0x28cb210.
+		inline constexpr Pattern DeviceSetPath = { "GTA VI fiDeviceRelative::SetPath",
+			"41 56 56 57 53 48 81 ec ? ? ? ? 4c 89 cf 44 89 c3", 0, Kind::Function };
+		// fiDeviceRelative constructor (object is 0x118 bytes, vtable 0x62fc810). Xbox RVA 0x165fa50. Other
+		// constructors share its shape, so it's found through the game's own `new` + ctor call in the mount visitor
+		// (`mov ecx, 0x118; call alloc; ...; call ctor`): RipOperand on that call's rel32 gives the ctor.
+		inline constexpr Pattern RelativeDeviceCtor = { "GTA VI fiDeviceRelative ctor",
+			"b9 18 01 00 00 e8 ? ? ? ? 48 85 c0 0f 84 ? ? ? ? 48 89 c1 49 89 c6 e8", 26, Kind::RipOperand };
+		// Per-entry mount visitor; mounts are data-driven, so this replaces RDR2's single InitialMount call.
+		inline constexpr Pattern MountVisitor = { "GTA VI mount-list visitor",
+			"41 57 41 56 56 57 53 48 83 ec 30 48 8b 02 48 8d 5c 24 2c", 0, Kind::Function };
+	}
+
 	// Scans for a pattern, applies its offset and, for RipOperand, follows the rip-relative operand.
 	// Returns 0 (and logs the pattern's name) when it isn't found, so callers can skip the feature.
 	inline uintptr_t find(const Pattern& p)
