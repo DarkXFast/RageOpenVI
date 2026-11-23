@@ -8,13 +8,8 @@ void HookGetSystemTimeAsFileTime(LPFILETIME lpSystemTimeAsFileTime)
 	{
 		bInited = true;
 
-		// Don't hide the console
-		if (auto addr = patterns::find(patterns::ShowConsole))
-			memory(addr).nop(6);
-
-		// cache skip
-		if (auto addr = patterns::find(patterns::CacheSkip))
-			memory(addr).put<uint8_t>(0xEB);
+		// RageOpenRDR2 also patched RDR2 here (keep the console visible, skip a cache check). Those were RDR2-specific
+		// and have no GTA VI equivalent yet; re-check once a PC exe exists.
 
 		memory::InitFuncs::run();
 
