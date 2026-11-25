@@ -20,6 +20,6 @@ static memory::InitFuncs ArchiveLog([] {
 	if (!config::get_log("rpf"))
 		return; // no point hooking if nothing is logged
 
-	if (auto fn = patterns::find(patterns::OpenArchive))
+	if (auto fn = patterns::find_any(patterns::OpenArchive, patterns::fallback::OpenArchive))
 		memory(fn).hook(OpenArchiveHook, &g_openArchiveOrig);
 });

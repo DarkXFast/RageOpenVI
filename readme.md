@@ -46,9 +46,14 @@ switch in `RageOpenVI.ini` so it can be turned off without uninstalling it.
 ## Porting to the GTA VI PC executable
 
 1. Check each pattern in [`src/game/patterns.h`](src/game/patterns.h) against the PC exe. Each entry has the Xbox RVA
-   and a description of the function, so it can be found again if the bytes differ.
+   and a description of the function, so it can be found again if the bytes differ. Every function the loader needs
+   also has a fallback pattern that finds a call to it elsewhere (mostly in the game's mount-list code), so a changed
+   prologue alone doesn't turn a feature off. The log says when a fallback was used, or when the two disagree.
+   All patterns and fallbacks match exactly once, at the expected function, in the Xbox exe. The research repo's
+   `patcheck.py` script checks this offline, without running the game.
 2. Check the relative device's size. The game allocates 0x118 bytes on Xbox, and RageOpenVI allocates 0x400 to leave
-   room.
+   room. The plugin reads the game's size from its own `new` call and turns mods devices off (with a log line) if it's
+   bigger than that.
 3. Build with `ReleaseWithLogs`, run with every log category on, and read `RageOpenVI.log`. Any missing pattern is
    listed by name, the game's mounts are listed with their names, and the mods devices it created are listed.
 4. Not ported (RDR2-only): RageOpenRDR2's "keep the console visible" and "cache skip" patches.

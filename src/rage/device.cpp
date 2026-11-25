@@ -20,15 +20,37 @@ namespace
 	constexpr size_t kDeviceAlloc = 0x400;
 }
 
+// The size the game itself allocates for a relative device, read from its `mov ecx, size` before `new`.
+// Returns false if it's bigger than kDeviceAlloc, so the caller turns mods devices off instead of overrunning.
+static bool CheckDeviceSize()
+{
+	uintptr_t at = patterns::find_any(patterns::RelativeDeviceSize, patterns::fallback::RelativeDeviceSize);
+	if (!at)
+	{
+		logger::write("info", " Relative device size not found; assuming it fits in 0x%zx bytes", kDeviceAlloc);
+		return true;
+	}
+	uint32_t size = *reinterpret_cast<const uint32_t*>(at);
+	logger::write("info", " Relative device size: 0x%x (allocating 0x%zx)", size, kDeviceAlloc);
+	if (size > kDeviceAlloc)
+	{
+		logger::write("info", " !! The game's relative device is bigger than 0x%zx bytes; raise kDeviceAlloc", kDeviceAlloc);
+		return false;
+	}
+	return true;
+}
+
 bool rage::device::init()
 {
-	g_mountAddress = patterns::find(patterns::DeviceMount);
+	using namespace patterns;
+	g_mountAddress = find_any(DeviceMount, fallback::DeviceMount);
 	g_mount = reinterpret_cast<MountFn>(g_mountAddress);
-	g_unmount = reinterpret_cast<UnmountFn>(patterns::find(patterns::DeviceUnmount));
-	g_setPath = reinterpret_cast<SetPathFn>(patterns::find(patterns::DeviceSetPath));
-	g_ctor = reinterpret_cast<CtorFn>(patterns::find(patterns::RelativeDeviceCtor));
-	g_parent = reinterpret_cast<ParentFn>(patterns::find(patterns::ParentDevice));
-	return g_mount && g_unmount && g_setPath && g_ctor && g_parent;
+	g_unmount = reinterpret_cast<UnmountFn>(find_any(DeviceUnmount, fallback::DeviceUnmount));
+	g_setPath = reinterpret_cast<SetPathFn>(find_any(DeviceSetPath, fallback::DeviceSetPath));
+	g_ctor = reinterpret_cast<CtorFn>(find_any(RelativeDeviceCtor, fallback::RelativeDeviceCtor));
+	g_parent = reinterpret_cast<ParentFn>(find_any(ParentDevice, fallback::ParentDevice));
+	bool sizeOk = CheckDeviceSize();
+	return g_mount && g_unmount && g_setPath && g_ctor && g_parent && sizeOk;
 }
 
 rage::fiDevice* rage::device::create_folder_device(const std::string& folder)
